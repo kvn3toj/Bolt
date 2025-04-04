@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import { Play, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -21,7 +21,10 @@ export function VideoSection({ title, videos, showViewAll = true }: VideoSection
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
         {showViewAll && (
-          <button className="text-sm text-purple-600 font-medium">
+          <button 
+            className="text-sm text-purple-600 font-medium"
+            title={`View all ${title}`}
+          >
             Ver todo
           </button>
         )}
@@ -41,7 +44,10 @@ export function VideoSection({ title, videos, showViewAll = true }: VideoSection
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors" />
-              <button className="absolute inset-0 flex items-center justify-center">
+              <button 
+                className="absolute inset-0 flex items-center justify-center"
+                title={`Play ${video.title}`}
+              >
                 <Play className="w-10 h-10 text-white opacity-80 group-hover:opacity-100 transition-opacity" />
               </button>
               <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">

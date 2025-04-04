@@ -40,7 +40,7 @@ export function VideoControls({
   onPlayPause,
   onMute,
   onVolumeChange,
-  onSeek: handleTimeUpdate,
+  onSeek,
   onSkip,
   onSpeedChange,
   onToggleSubtitles,
@@ -59,14 +59,10 @@ export function VideoControls({
       <input
         type="range"
         min={0}
-        max={duration || 0}
+        max={duration}
         value={currentTime}
-        onChange={handleTimeUpdate}
-        className="w-full h-1.5 bg-white/30 rounded-full appearance-none cursor-pointer"
-        style={{
-          backgroundSize: `${(currentTime / duration) * 100}% 100%`,
-          backgroundImage: 'linear-gradient(to right, white, white)'
-        }}
+        onChange={(e) => onSeek(parseFloat(e.target.value))}
+        className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
       />
 
       <div className="flex items-center justify-between mt-2">

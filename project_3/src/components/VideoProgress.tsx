@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import { Play, Clock } from 'lucide-react';
 
 interface VideoProgressProps {
