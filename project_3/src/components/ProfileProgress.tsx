@@ -16,10 +16,10 @@ function ProgressBar({ value, max, label }: ProgressBarProps) {
         <span>{label}</span>
         <span>{value}/{max}</span>
       </div>
-      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-        <div 
-          className="h-full bg-purple-600 rounded-full transition-all duration-300"
-          style={{ width: `${percentage}%` }}
+      <div className="progress-bar-container">
+        <div
+          className="h-full bg-purple-600 rounded-full transition-all duration-200 ease-in-out"
+          style={{ '--progress-width': `${percentage}%`, width: 'var(--progress-width)' } as React.CSSProperties}
         />
       </div>
     </div>

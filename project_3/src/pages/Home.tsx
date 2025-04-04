@@ -156,8 +156,8 @@ export function Home() {
             {[40, 60, 45, 80, 100, 75, 50].map((height, index) => (
               <div key={index} className="flex-1">
                 <div 
-                  className="bg-gradient-to-t from-purple-600 to-pink-500 rounded-t-md"
-                  style={{ height: `${height}%` }}
+                  className="bg-gradient-to-t from-purple-600 to-pink-500 rounded-t-md transition-all duration-200 ease-in-out"
+                  style={{ '--chart-height': `${height}%`, height: 'var(--chart-height)' } as React.CSSProperties}
                 />
               </div>
             ))}
@@ -193,8 +193,8 @@ export function Home() {
                   </div>
                   <div className="overflow-hidden h-2 text-xs flex rounded-full bg-purple-600/20">
                     <div
-                      style={{ width: `${(achievement.progress / achievement.total) * 100}%` }}
-                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-purple-500"
+                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-purple-500 transition-all duration-200 ease-in-out"
+                      style={{ '--chart-width': `${Math.round((achievement.progress / achievement.total) * 100)}%`, width: 'var(--chart-width)' } as React.CSSProperties}
                     />
                   </div>
                 </div>

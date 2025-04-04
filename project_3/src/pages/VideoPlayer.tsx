@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { VideoOnboarding } from '../components/VideoOnboarding';
 import { VideoQuiz } from '../components/VideoQuiz';
+import { VideoBinaryChoice } from '../components/VideoBinaryChoice';
 import { VideoControls } from '../components/VideoControls';
 import type { VideoQuestion } from '../lib/types';
 import { supabase } from '../lib/supabase';
@@ -41,25 +42,37 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [questions, setQuestions] = useState<VideoQuestion[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<VideoQuestion | null>(null);
+  const [activeBinaryChoice, setActiveBinaryChoice] = useState<VideoQuestion | null>(null);
   const [lastShownQuestionId, setLastShownQuestionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return !localStorage.getItem('videoOnboardingComplete');
   });
+  const [pausedTimestamp, setPausedTimestamp] = useState<number | null>(null);
 
   // Player container ref for fullscreen
   const playerContainerRef = useRef<HTMLDivElement>(null);
 
-  // Type guard function
+  // Type guard functions
   const isVideoQuestion = (q: unknown): q is VideoQuestion => {
     return (
       q !== null &&
       typeof q === 'object' &&
       'id' in q &&
       'timestamp' in q &&
+      'options' in q && 
+      'correct_answer' in q &&
       typeof (q as VideoQuestion).id === 'string' &&
       typeof (q as VideoQuestion).timestamp === 'number'
     );
+  };
+  
+  // Helper for safely accessing VideoQuestion properties
+  const getQuestionId = (question: VideoQuestion | null): string | 'none' => {
+    if (question && 'id' in question) {
+      return question.id;
+    }
+    return 'none';
   };
 
   const loadVideoData = useCallback(async () => {
@@ -124,7 +137,7 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
   // Check for questions at current timestamp
   useEffect(() => {
     if (!questions.length || !isPlaying || !currentTime) return;
-    if (activeQuestion) return;
+    if (activeQuestion || activeBinaryChoice) return;
 
     // Debug logs before finding a question
     console.log(`---------- QUESTION CHECK STATE ----------`);
@@ -132,7 +145,8 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
     console.log(`Questions count: ${questions.length}`);
     console.log(`Questions timestamps: ${questions.map(q => q.timestamp).join(', ')}`);
     console.log(`Is playing: ${isPlaying}`);
-    console.log(`Active question: ${activeQuestion ? (activeQuestion as VideoQuestion).id : 'none'}`);
+    console.log(`Active question: ${getQuestionId(activeQuestion)}`);
+    console.log(`Active binary choice: ${getQuestionId(activeBinaryChoice)}`);
     console.log(`Last shown question ID: ${lastShownQuestionId}`);
 
     // Find a question to show
@@ -145,13 +159,22 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
 
     if (question) {
       console.log('FOUND MATCHING QUESTION:', question);
-      console.log('Will call setActiveQuestion with:', question);
-      setActiveQuestion(question);
-      console.log('Setting active question and pausing video');
+      
+      if (question.type === 'paused') {
+        console.log('Will call setActiveQuestion with:', question);
+        setActiveQuestion(question);
+        console.log('Setting active question and pausing video');
+        if (videoRef.current) videoRef.current.pause();
+      } else if (question.type === 'binary') {
+        console.log('Will call setActiveBinaryChoice with:', question);
+        setActiveBinaryChoice(question);
+        console.log('Setting active binary choice without pausing video');
+        // Don't pause for binary choice questions
+      }
+      
       setLastShownQuestionId(question.id);
-      if (videoRef.current) videoRef.current.pause();
     }
-  }, [currentTime, questions, isPlaying, activeQuestion, lastShownQuestionId]);
+  }, [currentTime, questions, isPlaying, activeQuestion, activeBinaryChoice, lastShownQuestionId]);
 
   // Reset last shown question when video is seeked
   useEffect(() => {
@@ -495,9 +518,48 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
     }
   };
 
-  const handleQuizAnswer = useCallback(async (isCorrect: boolean) => {
-    if (!user || !activeQuestion) return;
+  // Add a handler for video buffering to adjust binary choice timers
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
 
+    const handleBuffering = () => {
+      // If there's a binary choice active when buffering starts, record the timestamp
+      if (activeBinaryChoice) {
+        setPausedTimestamp(Date.now());
+        console.log('[Video Event] video buffering, recording timestamp for binary choice timer adjustment');
+      }
+    };
+    
+    const handlePlaying = () => {
+      // When video resumes, adjust the timer if needed
+      if (activeBinaryChoice && pausedTimestamp) {
+        // We would typically use this to adjust the timer in the binary choice component
+        console.log('[Video Event] video resumed playing, binary choice timer can be adjusted');
+        setPausedTimestamp(null);
+      }
+    };
+    
+    video.addEventListener('waiting', handleBuffering);
+    video.addEventListener('playing', handlePlaying);
+    
+    return () => {
+      video.removeEventListener('waiting', handleBuffering);
+      video.removeEventListener('playing', handlePlaying);
+    };
+  }, [activeBinaryChoice, pausedTimestamp]);
+
+  const handleQuizAnswer = useCallback(async (isCorrect: boolean) => {
+    if (!user) return;
+    
+    // Crear una variable local unificada
+    const currentQuestion = activeQuestion || activeBinaryChoice;
+    
+    // Si no hay pregunta activa, no hacemos nada
+    if (!currentQuestion || !isVideoQuestion(currentQuestion)) return;
+
+    const questionId = currentQuestion.id;
+    
     console.log(`Quiz answered: ${isCorrect ? 'correct' : 'incorrect'}`);
     try {
       // First, save the quiz result
@@ -506,13 +568,33 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
         .insert({
           user_id: user.id,
           video_id: videoId,
-          question_id: activeQuestion.id,
+          question_id: questionId,
           score: isCorrect ? 100 : 0,
           total_questions: 1,
           created_at: new Date().toISOString()
         });
 
       if (error) throw error;
+
+      // Also save the response in the new question_responses table
+      // This uses the recently added table to track more detailed response data
+      const responseData = {
+        user_id: user.id,
+        question_id: questionId,
+        video_id: parseInt(videoId),
+        selected_option: isCorrect ? currentQuestion.correct_answer : -1,
+        response_time: null, // Podríamos calcular el tiempo de respuesta si lo necesitamos
+        is_correct: isCorrect,
+        created_at: new Date().toISOString()
+      };
+
+      const { error: responseError } = await supabase
+        .from('question_responses')
+        .insert(responseData);
+
+      if (responseError) {
+        console.error('Error saving question response:', responseError);
+      }
 
       // Then, get current user progress to accumulate points
       const { data: currentProgress, error: progressFetchError } = await supabase
@@ -527,7 +609,16 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
       }
 
       const currentPoints = currentProgress?.total_points || 0;
-      const newPoints = currentPoints + (isCorrect ? 10 : 0);
+      
+      // Get points from the question or use default value
+      // Use nullish coalescing to handle undefined or null values
+      const pointsValue = (
+        currentQuestion.points ?? 
+        (activeQuestion?.points ?? activeBinaryChoice?.points) ?? 
+        10
+      );
+      
+      const newPoints = currentPoints + (isCorrect ? pointsValue : 0);
 
       // Update user progress with accumulated points
       const { error: progressError } = await supabase
@@ -535,7 +626,7 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
         .upsert({
           user_id: user.id,
           video_id: videoId,
-          last_question_id: activeQuestion.id,
+          last_question_id: questionId,
           last_question_correct: isCorrect,
           last_interaction: new Date().toISOString(),
           total_points: newPoints
@@ -551,10 +642,28 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
       // Here we could show an error message to the user if desired
     } finally {
       // Clear the active question and continue the video
-      setActiveQuestion(null);
-      if (videoRef.current) videoRef.current.play();
+      if (activeQuestion) {
+        setActiveQuestion(null);
+        if (videoRef.current) videoRef.current.play();
+      } else if (activeBinaryChoice) {
+        setActiveBinaryChoice(null);
+        // Binary choice doesn't pause video, so no need to call play
+      }
     }
-  }, [user, videoId, activeQuestion]);
+  }, [user, videoId, activeQuestion, activeBinaryChoice]);
+
+  // Función mejorada para verificar si una pregunta tiene pause_on_interaction
+  const hasPauseOnInteraction = (question: VideoQuestion | null): boolean => {
+    if (!question) return false;
+    
+    // Si la propiedad está explícitamente definida, usa ese valor
+    if ('pause_on_interaction' in question && question.pause_on_interaction !== undefined) {
+      return question.pause_on_interaction;
+    }
+    
+    // Valor por defecto: true para preguntas paused, false para binary
+    return question.type === 'paused';
+  };
 
   return (
     <div 
@@ -623,14 +732,42 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
         {activeQuestion && (
           <VideoQuiz
             question={{
-              ...activeQuestion,
-              correctAnswer: activeQuestion.correct_answer
+              id: activeQuestion.id,
+              question: activeQuestion.question,
+              options: activeQuestion.options,
+              correctAnswer: activeQuestion.correct_answer,
+              type: activeQuestion.type as 'paused' | 'binary',
+              points: activeQuestion.points,
+              time_limit: activeQuestion.time_limit,
+              feedback: activeQuestion.feedback
             }}
             onAnswer={handleQuizAnswer}
             onClose={() => {
               setActiveQuestion(null);
               if (videoRef.current) videoRef.current.play();
             }}
+            points={activeQuestion.points}
+            timeLimit={activeQuestion.time_limit}
+          />
+        )}
+
+        {/* Active Binary Choice Overlay */}
+        {activeBinaryChoice && (
+          <VideoBinaryChoice
+            choice={{
+              id: activeBinaryChoice.id,
+              question: activeBinaryChoice.question,
+              options: activeBinaryChoice.options,
+              correctAnswer: activeBinaryChoice.correct_answer,
+              time_limit: activeBinaryChoice.time_limit,
+              points: activeBinaryChoice.points
+            }}
+            onAnswer={handleQuizAnswer}
+            onClose={() => setActiveBinaryChoice(null)}
+            pausedTimestamp={pausedTimestamp}
+            onExpand={hasPauseOnInteraction(activeBinaryChoice) ? () => {
+              if (videoRef.current) videoRef.current.pause();
+            } : undefined}
           />
         )}
 

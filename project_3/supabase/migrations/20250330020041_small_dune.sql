@@ -59,12 +59,8 @@ ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE video_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quiz_results ENABLE ROW LEVEL SECURITY;
 
--- Policies for videos
-CREATE POLICY "Anyone can view videos"
-  ON videos
-  FOR SELECT
-  TO public
-  USING (true);
+-- Skip policy creation for videos since it's defined in a previous migration
+-- We'll directly create policies for the new tables
 
 -- Policies for video progress
 CREATE POLICY "Users can view their own progress"
@@ -105,8 +101,4 @@ CREATE INDEX video_progress_video_id_idx ON video_progress(video_id);
 CREATE INDEX quiz_results_user_id_idx ON quiz_results(user_id);
 CREATE INDEX quiz_results_video_id_idx ON quiz_results(video_id);
 
--- Create trigger for updated_at
-CREATE TRIGGER update_videos_updated_at
-  BEFORE UPDATE ON videos
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+-- Skip trigger creation as it's already defined in a previous migration

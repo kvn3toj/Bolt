@@ -29,18 +29,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 />
                 <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               </div>
-              <button className="p-2 text-gray-400 hover:text-white">
+              <button className="p-2 text-gray-400 hover:text-white" aria-label="Ayuda">
                 <QuestionMarkCircle className="w-5 h-5" />
               </button>
-              <button className="p-2 text-gray-400 hover:text-white">
+              <button className="p-2 text-gray-400 hover:text-white" aria-label="Notificaciones">
                 <Bell className="w-5 h-5" />
               </button>
-              <button className="p-2 text-gray-400 hover:text-white">
+              <button className="p-2 text-gray-400 hover:text-white" aria-label="Idioma">
                 <Globe className="w-5 h-5" />
               </button>
               <button 
                 onClick={() => navigate(user ? '/profile' : '/login')}
                 className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center"
+                aria-label="Perfil de usuario"
               >
                 <User className="w-5 h-5 text-gray-300" />
               </button>

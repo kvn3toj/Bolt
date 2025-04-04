@@ -27,23 +27,7 @@ CREATE TABLE IF NOT EXISTS video_questions (
 -- Enable Row Level Security
 ALTER TABLE video_questions ENABLE ROW LEVEL SECURITY;
 
--- Policies for video questions
-CREATE POLICY "Anyone can view video questions"
-  ON video_questions
-  FOR SELECT
-  TO public
-  USING (true);
-
-CREATE POLICY "Admins can manage video questions"
-  ON video_questions
-  FOR ALL
-  TO authenticated
-  USING (auth.uid() IN (
-    SELECT id FROM auth.users WHERE auth.email() IN ('admin@example.com')
-  ))
-  WITH CHECK (auth.uid() IN (
-    SELECT id FROM auth.users WHERE auth.email() IN ('admin@example.com')
-  ));
+-- Skip policy creation as they are already defined in 20250330015744_broken_bar.sql
 
 -- Create index for better query performance
 CREATE INDEX video_questions_video_id_idx ON video_questions(video_id);

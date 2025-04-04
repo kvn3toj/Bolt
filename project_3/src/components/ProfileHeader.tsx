@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChevronLeft, MoreVertical } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -21,7 +20,7 @@ export function ProfileHeader({ title, showBack = true, showMore = true, onMoreC
         <h1 className="text-lg font-medium">{title}</h1>
       </div>
       {showMore && (
-        <button onClick={onMoreClick} className="p-1">
+        <button onClick={onMoreClick} className="p-1" aria-label="Más opciones">
           <MoreVertical className="w-6 h-6 text-gray-600" />
         </button>
       )}

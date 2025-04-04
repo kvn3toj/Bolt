@@ -356,8 +356,7 @@ export function Analytics() {
                   {transactionData.values.map((value, index) => (
                     <div
                       key={index}
-                      className="flex-1 bg-purple-600 rounded-t opacity-80 hover:opacity-100 transition-opacity"
-                      style={{ height: `${(value / Math.max(...transactionData.values)) * 100}%` }}
+                      className={`chart-bar bg-purple-600 w-8 h-chart-${Math.round((value / Math.max(...transactionData.values)) * 100)}`}
                     />
                   ))}
                 </div>
@@ -414,12 +413,16 @@ export function Analytics() {
               <h3 className="text-lg font-medium mb-4">Patrones de Uso por Hora</h3>
               <div className="h-64">
                 <div className="h-full flex items-end space-x-1">
-                  {hourlyUsage.map((data, index) => (
-                    <div
-                      key={index}
-                      className="flex-1 bg-purple-600 rounded-t opacity-80 hover:opacity-100 transition-opacity"
-                      style={{ height: `${(data.users / Math.max(...hourlyUsage.map(d => d.users))) * 100}%` }}
-                    />
+                  {hourlyUsage.map(({ hour, users }) => (
+                    <div key={hour} className="flex flex-col items-center">
+                      <div className="h-32 flex items-end mb-2">
+                        <div
+                          className="w-8 bg-purple-600 rounded-t-md transition-all duration-200 ease-in-out"
+                          style={{ '--chart-height': `${(users / 2000) * 100}%`, height: 'var(--chart-height)' } as React.CSSProperties}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500">{hour}:00</span>
+                    </div>
                   ))}
                 </div>
               </div>

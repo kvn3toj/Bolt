@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { VideoSection } from '../components/VideoHome/VideoSection';
 import { VideoCategories } from '../components/VideoHome/VideoCategories';
 import { BottomNavigation } from '../components/BottomNavigation';
-import { Loader2 } from 'lucide-react';
 
 // Interfaz para adaptar los videos de la BD al formato que espera VideoSection
 interface VideoSectionData {
@@ -120,19 +119,19 @@ export function VideoHome() {
       <div className="bg-white sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center">
-            <button className="p-2">
+            <button className="p-2" aria-label="Menú">
               <Menu className="w-6 h-6 text-gray-600" />
             </button>
             <h1 className="ml-2 text-xl font-semibold">ÜPlay</h1>
           </div>
           <div className="flex items-center space-x-2">
-            <button className="p-2">
+            <button className="p-2" aria-label="Buscar">
               <Search className="w-6 h-6 text-gray-600" />
             </button>
-            <button className="p-2">
+            <button className="p-2" aria-label="Mensajes">
               <MessageSquare className="w-6 h-6 text-gray-600" />
             </button>
-            <button className="p-2 relative">
+            <button className="p-2 relative" aria-label="Notificaciones">
               <Bell className="w-6 h-6 text-gray-600" />
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                 3

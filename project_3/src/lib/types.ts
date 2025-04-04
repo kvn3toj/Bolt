@@ -55,8 +55,15 @@ export interface VideoQuestion {
   question: string;
   options: string[];
   correct_answer: number;
-  type: 'binary' | 'multiple';
+  type: 'paused' | 'binary';
+  time_limit?: number;
+  points?: number;
+  pause_on_interaction?: boolean;
   created_at: string;
+  feedback?: {
+    correct?: string;
+    incorrect?: string;
+  };
 }
 
 export interface VideoProgress {

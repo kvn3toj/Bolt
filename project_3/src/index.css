@@ -67,19 +67,24 @@
 }
 
 @layer utilities {
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  .scrollbar-thin-webkit-hidden {
+    /* For older versions of Edge */
+    -ms-overflow-style: none;
+    /* For Firefox */
+    scrollbar-width: thin;
   }
   
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  .scrollbar-thin-webkit-hidden::-webkit-scrollbar {
+    /* For Chrome, Safari, and newer versions of Edge */
+    width: 0px;
+    height: 0px;
+    background: transparent;
   }
 }
 
 @layer base {
   body {
-    @apply bg-[#1E1E1E] text-white scrollbar-hide;
+    @apply bg-[#1E1E1E] text-white scrollbar-thin-webkit-hidden;
   }
 }
 
@@ -92,12 +97,7 @@
     @apply text-white;
   }
 
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  .progress-bar-container {
+    @apply h-2 bg-gray-200 rounded-full overflow-hidden;
   }
 }

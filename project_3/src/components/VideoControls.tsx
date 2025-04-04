@@ -56,6 +56,13 @@ export function VideoControls({
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // Para valores de ARIA
+  const safeCurrentTime = currentTime ?? 0;
+  const safeDuration = duration ?? 0;
+  const safeVolume = volume ?? 0;
+  const settingsExpanded = showSettings ? "true" : "false";
+  const subtitlesPressed = showSubtitles ? "true" : "false";
+
   return (
     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
       <input
@@ -67,8 +74,8 @@ export function VideoControls({
         className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
         aria-label="Video progress"
         aria-valuemin={0}
-        aria-valuemax={duration}
-        aria-valuenow={currentTime}
+        aria-valuemax={safeDuration}
+        aria-valuenow={safeCurrentTime}
       />
 
       <div className="flex items-center justify-between mt-2">
@@ -115,7 +122,7 @@ export function VideoControls({
               aria-label="Volume control"
               aria-valuemin={0}
               aria-valuemax={1}
-              aria-valuenow={volume}
+              aria-valuenow={safeVolume}
             />
           </div>
 
@@ -128,7 +135,7 @@ export function VideoControls({
               onClick={() => setShowSettings(!showSettings)}
               className="text-white hover:text-gray-300"
               aria-label="Playback settings"
-              aria-expanded={showSettings}
+              aria-expanded={settingsExpanded}
               aria-haspopup="menu"
             >
               <Settings className="w-5 h-5" />
@@ -166,7 +173,7 @@ export function VideoControls({
               showSubtitles ? 'text-purple-400' : ''
             }`}
             aria-label={showSubtitles ? "Disable subtitles" : "Enable subtitles"}
-            aria-pressed={showSubtitles}
+            aria-pressed={subtitlesPressed}
           >
             <Subtitles className="w-5 h-5" />
           </button>

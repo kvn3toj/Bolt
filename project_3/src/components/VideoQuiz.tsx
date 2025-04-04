@@ -6,7 +6,13 @@ interface QuizQuestion {
   question: string;
   options: string[];
   correctAnswer: number;
-  type?: 'binary' | 'multiple';
+  type?: 'paused' | 'binary';
+  points?: number;
+  time_limit?: number;
+  feedback?: {
+    correct?: string;
+    incorrect?: string;
+  };
 }
 
 interface VideoQuizProps {
@@ -108,11 +114,11 @@ export function VideoQuiz({
           ))}
         </div>
 
-        {/* Progress Bar */}
-        <div className="mt-12 w-full bg-white/10 rounded-full h-2">
+        {/* Progress bar */}
+        <div className="progress-bar-container mt-2">
           <div
-            className="bg-purple-500 h-full rounded-full transition-all duration-1000"
-            style={{ width: `${(timeLeft / timeLimit) * 100}%` }}
+            className="h-full bg-purple-600 rounded-full transition-all duration-200 ease-in-out"
+            style={{ '--progress-width': `${Math.round((timeLeft / timeLimit) * 100)}%`, width: 'var(--progress-width)' } as React.CSSProperties}
           />
         </div>
         

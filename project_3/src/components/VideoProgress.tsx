@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Play, Clock } from 'lucide-react';
 
 interface VideoProgressProps {
@@ -62,8 +61,8 @@ export function VideoProgress({
           <div className="relative">
             <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-purple-600 rounded-full transition-all"
-                style={{ width: `${progress * 100}%` }}
+                className="h-full bg-purple-600 rounded-full transition-all duration-200 ease-in-out"
+                style={{ '--progress-width': `${Math.round(progress * 100)}%`, width: 'var(--progress-width)' } as React.CSSProperties}
               />
             </div>
           </div>
@@ -72,6 +71,7 @@ export function VideoProgress({
         <button
           onClick={onResume}
           className="ml-4 p-2 rounded-full bg-purple-600 text-white hover:bg-purple-700 transition-colors"
+          aria-label="Reanudar reproducción"
         >
           <Play className="w-5 h-5" />
         </button>
