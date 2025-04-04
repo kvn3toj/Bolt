@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { VideoOnboarding } from '../components/VideoOnboarding';
 import { VideoQuiz } from '../components/VideoQuiz';
 import { VideoControls } from '../components/VideoControls';
-import { type VideoQuestion } from '../lib/types';
+import type { VideoQuestion } from '../lib/types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
@@ -49,6 +49,18 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
 
   // Player container ref for fullscreen
   const playerContainerRef = useRef<HTMLDivElement>(null);
+
+  // Type guard function
+  const isVideoQuestion = (q: unknown): q is VideoQuestion => {
+    return (
+      q !== null &&
+      typeof q === 'object' &&
+      'id' in q &&
+      'timestamp' in q &&
+      typeof (q as VideoQuestion).id === 'string' &&
+      typeof (q as VideoQuestion).timestamp === 'number'
+    );
+  };
 
   const loadVideoData = useCallback(async () => {
     setIsLoading(true);
@@ -99,7 +111,7 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
         } else {
           console.log('No questions found');
         }
-        setQuestions(questions || []);
+        setQuestions(questions?.filter(isVideoQuestion) || []);
       } catch (err) {
         console.error('Error loading video questions:', err);
         setError('Failed to load video questions. Please try again later.');
@@ -120,17 +132,15 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
     console.log(`Questions count: ${questions.length}`);
     console.log(`Questions timestamps: ${questions.map(q => q.timestamp).join(', ')}`);
     console.log(`Is playing: ${isPlaying}`);
-    console.log(`Active question: ${activeQuestion ? activeQuestion.id : 'none'}`);
+    console.log(`Active question: ${activeQuestion ? (activeQuestion as VideoQuestion).id : 'none'}`);
     console.log(`Last shown question ID: ${lastShownQuestionId}`);
 
-    // Temporarily simplify the find condition by removing the lastShownQuestionId check
+    // Find a question to show
     const question = questions.find(q => {
       const timeDiff = Math.abs(q.timestamp - currentTime);
       // Log each question comparison
       console.log(`Question ${q.id}: timestamp=${q.timestamp}s, currentTime=${currentTime.toFixed(2)}s, diff=${timeDiff.toFixed(2)}s, would match=${timeDiff < 1.5}, lastShown=${q.id === lastShownQuestionId}`);
-      // Temporarily commented out the lastShownQuestionId condition
-      // return timeDiff < 1.5 && q.id !== lastShownQuestionId;
-      return timeDiff < 1.5;
+      return timeDiff < 1.5 && q.id !== lastShownQuestionId;
     });
 
     if (question) {
@@ -173,56 +183,198 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
     }, 3000);
   };
 
+  // Initial mount check
   useEffect(() => {
-    if (!videoRef.current) return;
-
     const video = videoRef.current;
+    if (!video) {
+      console.log('[Mount Check] videoRef is not ready on initial mount');
+      return;
+    }
+
+    console.log('[Mount Check] Initial video element state:', {
+      src: video.src,
+      readyState: video.readyState,
+      currentTime: video.currentTime,
+      duration: video.duration,
+      networkState: video.networkState,
+      error: video.error,
+      paused: video.paused,
+      ended: video.ended,
+      seeking: video.seeking,
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight
+    });
+  }, []); // Empty dependency array - runs only on mount
+
+  // Monitor video element readiness and source changes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
+      console.log('[Video Monitor] videoRef is not ready yet');
+      return;
+    }
+
+    console.log('[Video Monitor] Video element state:', {
+      src: video.src,
+      readyState: video.readyState,
+      currentTime: video.currentTime,
+      duration: video.duration,
+      networkState: video.networkState,
+      error: video.error,
+      paused: video.paused,
+      ended: video.ended,
+      seeking: video.seeking,
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight
+    });
+
+    // Check if video is already loaded
+    if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+      console.log('[Video Monitor] Video already has data, triggering loadedmetadata handler');
+      const event = new Event('loadedmetadata');
+      video.dispatchEvent(event);
+    }
+
+    // Check if video is already playing
+    if (!video.paused) {
+      console.log('[Video Monitor] Video is already playing, triggering play handler');
+      const event = new Event('play');
+      video.dispatchEvent(event);
+    }
+  }, [videoData?.url]);
+
+  // Video event listeners
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
+      console.log('[Video Init] videoRef is not ready yet');
+      return;
+    }
+
+    console.log('[Video Init] Setting up event listeners for video element:', {
+      src: video.src,
+      readyState: video.readyState,
+      currentTime: video.currentTime,
+      duration: video.duration
+    });
 
     const handleTimeUpdate = () => {
       if (video) {
-        setCurrentTime(video.currentTime);
-        // Debug log for time updates
-        if (Math.floor(video.currentTime) % 5 === 0) { // Log every 5 seconds to avoid flooding
-          console.log(`Video time updated: ${video.currentTime.toFixed(2)}s (type: ${typeof video.currentTime})`);
-        }
+        const newTime = video.currentTime;
+        console.log('[Video Event] timeupdate - Time updated:', {
+          currentTime: newTime,
+          duration: video.duration,
+          readyState: video.readyState,
+          paused: video.paused
+        });
+        setCurrentTime(newTime);
       }
     };
 
     const handleLoadedMetadata = () => {
       if (video) {
-        setDuration(video.duration);
-        console.log(`Video duration loaded: ${video.duration}s`);
+        const videoDuration = video.duration;
+        console.log('[Video Event] loadedmetadata - Duration loaded:', {
+          duration: videoDuration,
+          readyState: video.readyState,
+          videoElement: video
+        });
+        setDuration(videoDuration);
       }
     };
 
     const handleEnded = () => {
+      console.log('[Video Event] ended - Video playback completed');
       setIsPlaying(false);
     };
 
     const handlePlay = () => {
+      console.log('[Video Event] play - Video started playing:', {
+        currentTime: video?.currentTime,
+        duration: video?.duration,
+        readyState: video?.readyState
+      });
       setIsPlaying(true);
-      console.log('Video started playing');
     };
 
     const handlePause = () => {
+      console.log('[Video Event] pause - Video paused:', {
+        currentTime: video?.currentTime,
+        duration: video?.duration,
+        readyState: video?.readyState
+      });
       setIsPlaying(false);
-      console.log('Video paused');
     };
 
+    const handleError = (e: Event) => {
+      const videoError = (e.target as HTMLVideoElement).error;
+      console.error('[Video Event] error - Video error occurred:', {
+        code: videoError?.code,
+        message: videoError?.message,
+        videoState: {
+          currentTime: video?.currentTime,
+          duration: video?.duration,
+          readyState: video?.readyState,
+          networkState: video?.networkState
+        }
+      });
+      setError(`Error loading video: ${videoError?.message || 'Unknown error'}`);
+    };
+
+    const handleLoadedData = () => {
+      console.log('[Video Event] loadeddata - Video data is loaded, readyState:', video.readyState);
+    };
+
+    const handleWaiting = () => {
+      console.log('[Video Event] waiting - Video is waiting for more data');
+    };
+
+    const handleCanPlay = () => {
+      console.log('[Video Event] canplay - Video can start playing, readyState:', video.readyState);
+    };
+
+    const handleCanPlayThrough = () => {
+      console.log('[Video Event] canplaythrough - Video can play through without stopping, readyState:', video.readyState);
+    };
+
+    // Add all event listeners
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('ended', handleEnded);
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
+    video.addEventListener('error', handleError);
+    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('canplaythrough', handleCanPlayThrough);
 
+    // Log initial video state
+    console.log('[Video Init] Initial video state:', {
+      currentTime: video.currentTime,
+      duration: video.duration,
+      readyState: video.readyState,
+      paused: video.paused,
+      ended: video.ended,
+      networkState: video.networkState,
+      src: video.src
+    });
+
+    // Cleanup function
     return () => {
+      console.log('[Video Cleanup] Removing event listeners');
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('play', handlePlay);
       video.removeEventListener('pause', handlePause);
+      video.removeEventListener('error', handleError);
+      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('canplaythrough', handleCanPlayThrough);
     };
-  }, []);
+  }, [videoData?.url]); // Add videoData.url as dependency to re-attach listeners when video source changes
 
   // Handle fullscreen changes
   useEffect(() => {
@@ -237,16 +389,34 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
   }, []);
 
   const togglePlay = () => {
-    console.log('Toggle play called, current state:', isPlaying);
+    console.log('[Control] Toggle play called:', {
+      currentState: {
+        isPlaying,
+        currentTime: videoRef.current?.currentTime,
+        duration: videoRef.current?.duration,
+        readyState: videoRef.current?.readyState
+      }
+    });
+
     if (videoRef.current) {
+      console.log('[Control] videoRef exists, attempting to play/pause');
       if (isPlaying) {
         videoRef.current.pause();
       } else {
         videoRef.current.play().catch(error => {
-          console.error('Error playing video:', error);
+          console.error('[Control] Error playing video:', {
+            error,
+            videoState: {
+              currentTime: videoRef.current?.currentTime,
+              duration: videoRef.current?.duration,
+              readyState: videoRef.current?.readyState
+            }
+          });
           setIsPlaying(false);
         });
       }
+    } else {
+      console.error('[Control] videoRef is null!');
     }
   };
 
@@ -275,12 +445,25 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
   };
 
   const handleSeek = (time: number) => {
-    if (isNaN(time)) return;
-    
-    console.log('Seek to time:', time);
-    setCurrentTime(time);
+    console.log('[Control] Seek called:', {
+      targetTime: time,
+      currentState: {
+        currentTime: videoRef.current?.currentTime,
+        duration: videoRef.current?.duration,
+        readyState: videoRef.current?.readyState
+      }
+    });
+
+    if (isNaN(time)) {
+      console.error('[Control] Invalid seek time:', time);
+      return;
+    }
+
     if (videoRef.current) {
+      console.log('[Control] Setting video time to:', time);
       videoRef.current.currentTime = time;
+    } else {
+      console.error('[Control] videoRef is null during seek!');
     }
   };
 
@@ -317,24 +500,36 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
 
     console.log(`Quiz answered: ${isCorrect ? 'correct' : 'incorrect'}`);
     try {
-      // Guardar el resultado del quiz
+      // First, save the quiz result
       const { error } = await supabase
         .from('quiz_results')
         .insert({
           user_id: user.id,
           video_id: videoId,
           question_id: activeQuestion.id,
-          is_correct: isCorrect,
-          timestamp: new Date().toISOString(),
-          points_earned: isCorrect ? 10 : 0,
-          // Agregar campos faltantes del esquema quiz_results
           score: isCorrect ? 100 : 0,
-          total_questions: 1
+          total_questions: 1,
+          created_at: new Date().toISOString()
         });
 
       if (error) throw error;
 
-      // Actualizar el progreso del usuario
+      // Then, get current user progress to accumulate points
+      const { data: currentProgress, error: progressFetchError } = await supabase
+        .from('user_progress')
+        .select('total_points')
+        .eq('user_id', user.id)
+        .eq('video_id', videoId)
+        .single();
+
+      if (progressFetchError && progressFetchError.code !== 'PGRST116') { // PGRST116 is "not found"
+        throw progressFetchError;
+      }
+
+      const currentPoints = currentProgress?.total_points || 0;
+      const newPoints = currentPoints + (isCorrect ? 10 : 0);
+
+      // Update user progress with accumulated points
       const { error: progressError } = await supabase
         .from('user_progress')
         .upsert({
@@ -343,7 +538,7 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
           last_question_id: activeQuestion.id,
           last_question_correct: isCorrect,
           last_interaction: new Date().toISOString(),
-          total_points: isCorrect ? 10 : 0
+          total_points: newPoints
         }, {
           onConflict: 'user_id,video_id'
         });
@@ -353,9 +548,9 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
       console.log('Quiz result saved successfully');
     } catch (error) {
       console.error('Error saving quiz result:', error);
-      // Aquí podríamos mostrar un mensaje de error al usuario si lo deseamos
+      // Here we could show an error message to the user if desired
     } finally {
-      // Limpiar la pregunta activa y continuar el video
+      // Clear the active question and continue the video
       setActiveQuestion(null);
       if (videoRef.current) videoRef.current.play();
     }
@@ -449,6 +644,7 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
             playbackSpeed={playbackSpeed}
             showSubtitles={showSubtitles}
             volume={volume}
+            isFullscreen={isFullscreen}
             onPlayPause={togglePlay}
             onMute={toggleMute}
             onVolumeChange={handleVolumeChange}

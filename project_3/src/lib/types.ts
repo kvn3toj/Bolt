@@ -38,7 +38,7 @@ export interface OrderItem {
 }
 
 export interface Video {
-  id: string;
+  id: number;
   title: string;
   description: string;
   url: string;
@@ -50,18 +50,19 @@ export interface Video {
 
 export interface VideoQuestion {
   id: string;
-  video_id: string;
+  video_id: number;
   timestamp: number;
   question: string;
   options: string[];
   correct_answer: number;
+  type: 'binary' | 'multiple';
   created_at: string;
 }
 
 export interface VideoProgress {
   id: string;
   user_id: string;
-  video_id: string;
+  video_id: number;
   progress: number;
   watch_time: number;
   last_watched_at: string;
@@ -73,7 +74,8 @@ export interface VideoProgress {
 export interface QuizResult {
   id: string;
   user_id: string;
-  video_id: string;
+  video_id: number;
+  question_id: string;
   score: number;
   total_questions: number;
   created_at: string;
